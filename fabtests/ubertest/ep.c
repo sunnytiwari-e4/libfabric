@@ -121,15 +121,18 @@ int ft_reset_ep(void)
 {
 	int ret;
 
-	ret = ft_comp_rx(0);
-	if (ret < 0)
-		return ret;
+	/* Drain any completions that are immediately available */
+	do {
+		ret = ft_comp_rx(0);
+	} while (ret > 0);
 
-	while (ft_tx_ctrl.credits < ft_tx_ctrl.max_credits) {
+	do {
 		ret = ft_comp_tx(0);
-		if (ret < 0)
-			return ret;
-	}
+	} while (ret > 0);
+
+	/* Restore full credit window for the next test */
+	ft_tx_ctrl.credits = ft_tx_ctrl.max_credits;
+	ft_rx_ctrl.credits = ft_rx_ctrl.max_credits;
 
 	ft_hmem_memset(opts.iface, opts.device, ft_tx_ctrl.buf, 0, ft_tx_ctrl.msg_size);
 	ft_hmem_memset(opts.iface, opts.device, ft_rx_ctrl.buf, 0, ft_rx_ctrl.msg_size);
